@@ -27,7 +27,6 @@ INSERT INTO `role` (`rolename`) VALUES ('adm');
 INSERT INTO `role` (`rolename`) VALUES ('mdr');
 INSERT INTO `role` (`rolename`) VALUES ('usr');
 
-
 -- -----------------------------------------------------
 -- Table `song_lyr_db`.`acc_status`
 -- -----------------------------------------------------
@@ -40,7 +39,6 @@ ENGINE = InnoDB;
 INSERT INTO `acc_status` (`status_descr`) VALUES ('inocnt');
 INSERT INTO `acc_status` (`status_descr`) VALUES ('warned');
 INSERT INTO `acc_status` (`status_descr`) VALUES ('banned');
-
 
 -- -----------------------------------------------------
 -- Table `song_lyr_db`.`user`
@@ -80,19 +78,16 @@ INSERT INTO `public_status` (`status_descr`) VALUES ('verified');
 INSERT INTO `public_status` (`status_descr`) VALUES ('nonverified');
 INSERT INTO `public_status` (`status_descr`) VALUES ('limited');
 
-
 -- -----------------------------------------------------
 -- Table `song_lyr_db`.`performer`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `song_lyr_db`.`performer` (
   `performer_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `performer_name` VARCHAR(100) NOT NULL,
-  `descr_file_path` VARCHAR(255) NOT NULL,
-  `cover_file_path` VARCHAR(255) NOT NULL,
+  `description` TEXT NOT NULL,
+  `cover_url` VARCHAR(1024) NOT NULL,
   `status_id` INT UNSIGNED NOT NULL,
   PRIMARY KEY (`performer_id`),
-  UNIQUE INDEX `performer_name_UNIQUE` (`performer_name` ASC) VISIBLE,
-  UNIQUE INDEX `desc_file_path_UNIQUE` (`descr_file_path` ASC) VISIBLE,
   INDEX `fk_performer_status1_idx` (`status_id` ASC) VISIBLE,
   CONSTRAINT `fk_performer_status1`
     FOREIGN KEY (`status_id`)
@@ -108,12 +103,10 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `song_lyr_db`.`album` (
   `album_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `album_name` VARCHAR(100) NOT NULL,
-  `descr_file_path` VARCHAR(255) NOT NULL,
-  `cover_file_path` VARCHAR(255) NOT NULL,
+  `description` TEXT NOT NULL,
+  `cover_url` VARCHAR(1024) NOT NULL,
   `status_id` INT UNSIGNED NOT NULL,
   PRIMARY KEY (`album_id`),
-  UNIQUE INDEX `descr_file_path_UNIQUE` (`descr_file_path` ASC) VISIBLE,
-  UNIQUE INDEX `cover_file_path_UNIQUE` (`cover_file_path` ASC) VISIBLE,
   INDEX `fk_album_status1_idx` (`status_id` ASC) VISIBLE,
   CONSTRAINT `fk_album_status1`
     FOREIGN KEY (`status_id`)
@@ -134,12 +127,12 @@ CREATE TABLE IF NOT EXISTS `song_lyr_db`.`album_performer` (
   CONSTRAINT `fk_album_performer_album1`
     FOREIGN KEY (`album_id`)
     REFERENCES `song_lyr_db`.`album` (`album_id`)
-    ON DELETE NO ACTION
+    ON DELETE CASCADE
     ON UPDATE NO ACTION,
   CONSTRAINT `fk_album_performer_performer1`
     FOREIGN KEY (`performer_id`)
     REFERENCES `song_lyr_db`.`performer` (`performer_id`)
-    ON DELETE NO ACTION
+    ON DELETE CASCADE
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
@@ -150,11 +143,9 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `song_lyr_db`.`track` (
   `track_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `track_name` VARCHAR(100) NOT NULL,
-  `lyrics_file_path` VARCHAR(255) NOT NULL,
+  `lyrics` TEXT NOT NULL,
   `status_id` INT UNSIGNED NOT NULL,
   PRIMARY KEY (`track_id`),
-  UNIQUE INDEX `track_name_UNIQUE` (`track_name` ASC) VISIBLE,
-  UNIQUE INDEX `lyrics_file_path_UNIQUE` (`lyrics_file_path` ASC) VISIBLE,
   INDEX `fk_track_status1_idx` (`status_id` ASC) VISIBLE,
   CONSTRAINT `fk_track_status1`
     FOREIGN KEY (`status_id`)
@@ -175,12 +166,12 @@ CREATE TABLE IF NOT EXISTS `song_lyr_db`.`track_performer` (
   CONSTRAINT `fk_track_performer_track1`
     FOREIGN KEY (`track_id`)
     REFERENCES `song_lyr_db`.`track` (`track_id`)
-    ON DELETE NO ACTION
+    ON DELETE CASCADE
     ON UPDATE NO ACTION,
   CONSTRAINT `fk_track_performer_performer1`
     FOREIGN KEY (`performer_id`)
     REFERENCES `song_lyr_db`.`performer` (`performer_id`)
-    ON DELETE NO ACTION
+    ON DELETE CASCADE
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
@@ -196,12 +187,12 @@ CREATE TABLE IF NOT EXISTS `song_lyr_db`.`track_album` (
   CONSTRAINT `fk_track_album_track1`
     FOREIGN KEY (`track_id`)
     REFERENCES `song_lyr_db`.`track` (`track_id`)
-    ON DELETE NO ACTION
+    ON DELETE CASCADE
     ON UPDATE NO ACTION,
   CONSTRAINT `fk_track_album_album1`
     FOREIGN KEY (`album_id`)
     REFERENCES `song_lyr_db`.`album` (`album_id`)
-    ON DELETE NO ACTION
+    ON DELETE CASCADE
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
@@ -217,12 +208,12 @@ CREATE TABLE IF NOT EXISTS `song_lyr_db`.`tracks_by_user` (
   CONSTRAINT `fk_tracks_by_user_user1`
     FOREIGN KEY (`user_id`)
     REFERENCES `song_lyr_db`.`user` (`user_id`)
-    ON DELETE NO ACTION
+    ON DELETE CASCADE
     ON UPDATE NO ACTION,
   CONSTRAINT `fk_tracks_by_user_track1`
     FOREIGN KEY (`track_id`)
     REFERENCES `song_lyr_db`.`track` (`track_id`)
-    ON DELETE NO ACTION
+    ON DELETE CASCADE
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
@@ -238,12 +229,12 @@ CREATE TABLE IF NOT EXISTS `song_lyr_db`.`performers_by_user` (
   CONSTRAINT `fk_performers_by_user_performer1`
     FOREIGN KEY (`performer_id`)
     REFERENCES `song_lyr_db`.`performer` (`performer_id`)
-    ON DELETE NO ACTION
+    ON DELETE CASCADE
     ON UPDATE NO ACTION,
   CONSTRAINT `fk_performers_by_user_user1`
     FOREIGN KEY (`user_id`)
     REFERENCES `song_lyr_db`.`user` (`user_id`)
-    ON DELETE NO ACTION
+    ON DELETE CASCADE
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
@@ -259,12 +250,12 @@ CREATE TABLE IF NOT EXISTS `song_lyr_db`.`albums_by_user` (
   CONSTRAINT `fk_albums_by_user_album1`
     FOREIGN KEY (`album_id`)
     REFERENCES `song_lyr_db`.`album` (`album_id`)
-    ON DELETE NO ACTION
+    ON DELETE CASCADE
     ON UPDATE NO ACTION,
   CONSTRAINT `fk_albums_by_user_user1`
     FOREIGN KEY (`user_id`)
     REFERENCES `song_lyr_db`.`user` (`user_id`)
-    ON DELETE NO ACTION
+    ON DELETE CASCADE
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 

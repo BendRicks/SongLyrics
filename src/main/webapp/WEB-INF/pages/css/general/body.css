@@ -1,0 +1,38 @@
+.main_container {
+    margin: 0;
+}
+
+.content_body {
+    display: inline-block;
+    width: 100%;
+    min-height: 100%;
+    /*height: fit-content;*/
+}
+
+.inner_content_container {
+    position: relative;
+    display: flex;
+    background-color: beige;
+    align-items: center;
+    justify-content: center;
+    margin: 0 2% 0 2%;
+    width: 96%;
+    min-width: 800px;
+    min-height: 100%;
+    height: fit-content;
+}
+
+.page_content {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-direction: column;
+    position: relative;
+    width: 92%;
+    min-height: 92%;
+    height: fit-content;
+}
+
+.page_h1 {
+    font-family: 'Montserrat', sans-serif;
+}

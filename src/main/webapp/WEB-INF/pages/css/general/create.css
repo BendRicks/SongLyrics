@@ -1,0 +1,38 @@
+.input_label {
+    margin-top: 5px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 15px;
+}
+
+.input {
+    display: block;
+    width: 100%;
+    border-color: red;
+    border-radius: 5px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 18px;
+}
+
+.input_small {
+    height: 24px;
+    min-width: 300px;
+    max-width: 1200px;
+}
+
+.input_big {
+    min-height: 300px;
+    min-width: 300px;
+    max-width: 1200px;
+}
+
+.submit {
+    background-color: beige;
+    margin-top: 8px;
+    height: 30px;
+    width: fit-content;
+    transition: 0.3s;
+}
+
+.submit:hover {
+    background-color: lightgreen;
+}

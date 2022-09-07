@@ -1,0 +1,81 @@
+.header {
+    font-family: 'Montserrat', sans-serif;
+    display: inline-flex;
+    justify-content: space-between;
+    align-content: flex-start;
+    width: 100%;
+    min-width: 830px;
+    height: 55px;
+    background-color: blue;
+    margin: 0;
+    padding: 0;
+}
+
+.header_block {
+    display: inline-flex;
+    justify-content: left;
+    align-items: center;
+    width: fit-content;
+}
+
+.nav_tab {
+    /*vertical-align: top;*/
+    display: inline-block;
+    height: 100%;
+    width: fit-content;
+    background-color: blue;
+    text-decoration: none;
+    color: white;
+    transition: 0.2s linear;
+}
+
+.nav_tab_text {
+    margin-top: auto;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 20px;
+    padding: 15px;
+}
+
+.nav_tab:hover {
+    background-color: white;
+    color: blue;
+}
+
+.logo {
+    text-decoration: none;
+    font-size: 35px;
+    font-weight: 500;
+    color: white;
+    vertical-align: top;
+    display: inline-block;
+    height: fit-content;
+    margin: 0 20px 0 7%;
+}
+
+.user_link {
+    margin-right: 30px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: white;
+    text-decoration: none;
+    transition: 0.2s linear;
+}
+
+.user_link:hover {
+    color: red;
+}
+
+.account_action {
+    margin-right: 15px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: white;
+    text-decoration: none;
+    transition: 0.2s linear;
+}
+
+.account_action:hover {
+    color: red;
+}

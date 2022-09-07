@@ -1,0 +1,115 @@
+.search_bar_container {
+    margin-top: 10px;
+    padding-top: 10px;
+    font-family: 'Montserrat', sans-serif;
+    height: fit-content;
+    width: 90%;
+    background-color: gray;
+    border-radius: 5px;
+}
+
+.search_form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.search_input {
+    height: 30px;
+    width: 90%;
+    border-color: red;
+    border-radius: 3px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 22px;
+}
+
+.search_page {
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+.search_result_block {
+    margin-top: 20px;
+    min-height: 580px;
+    height: fit-content;
+    width: 96%;
+}
+
+.search_item {
+    text-decoration: none;
+    color: black;
+    margin-top: 2px;
+    border-radius: 3px;
+    border-top: 1px solid black;
+    border-bottom: 1px solid black;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    transition: 0.2s;
+}
+
+.search_item:hover {
+    background-color: gray;
+}
+
+.item_small_cover {
+    /*font-size: 26px;*/
+    height: 60px;
+}
+
+.item_big_cover {
+    /*font-size: 36px;*/
+    height: 90px;
+}
+
+.item_part {
+    display: flex;
+    align-items: center;
+    margin: 0 15px 0 0;
+}
+
+.item_id {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 24px;
+    height: 30px;
+    min-width: 60px;
+    width: fit-content;
+    justify-content: center;
+    background-color: gray;
+}
+
+.small_cover {
+    display: inline-block;
+    margin-top: 4px;
+    margin-left: 4px;
+    margin-right: 20px;
+    height: 52px;
+}
+
+.big_cover {
+    display: inline-block;
+    margin-top: 4px;
+    margin-left: 4px;
+    margin-right: 20px;
+    height: 82px;
+}
+
+.item_big_name {
+    margin: 0 5px 10px 20px;
+    font-size: 40px;
+    display: inline-block;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.item_small_name {
+    margin: 8px 5px 10px 20px;
+    font-size: 26px;
+    display: inline-block;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.manip_button {
+    display: inline-block;
+}

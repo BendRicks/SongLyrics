@@ -1,5 +1,7 @@
 package service;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import service.impl.AlbumService;
 import service.impl.PerformerService;
 import service.impl.TrackService;
@@ -7,6 +9,7 @@ import service.impl.UserService;
 
 public class ServiceFactory {
 
+    private final Logger logger = LogManager.getLogger(ServiceFactory.class);
     private static volatile ServiceFactory instance;
 
     private final AlbumService albumService;
@@ -20,6 +23,7 @@ public class ServiceFactory {
         performerService = new PerformerService();
         trackService = new TrackService();
         userService = new UserService();
+        logger.info("ServiceFactory class object initialized");
     }
 
     public static ServiceFactory getInstance() {

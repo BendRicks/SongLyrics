@@ -5,13 +5,12 @@ import java.io.Serializable;
 public class User extends Entity implements Serializable {
 
     private String username;
-    private String passwordHash;
-    private int role;
-    private int accStatus;
+    private String passwordHash = null;
+    private Integer role = null;
+    private Integer accStatus = null;
 
-    public User(String username, String passwordHash){
+    public User(String username){
         this.username = username;
-        this.passwordHash = passwordHash;
     }
     public User(int id, String username, String passwordHash, int roleId, int accStatus){
         super(id);

@@ -1,9 +1,7 @@
 package entity;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
 
 public class Album extends Entity implements Serializable {
 
@@ -11,35 +9,39 @@ public class Album extends Entity implements Serializable {
     private final String coverImagePath;
     private List<Performer> albumPerformers;
     private List<Track> albumTracks;
-    private final String descriptionFilePath;
+    private final String description;
     private int status;
 
-    public Album(String name, String coverImagePath, String descriptionFilePath){
+    public Album(String name, String coverImagePath, String description){
         this.name = name;
         this.coverImagePath = coverImagePath;
-        this.descriptionFilePath = descriptionFilePath;
+        this.description = description;
         this.albumPerformers = null;
         this.albumTracks = null;
     }
 
-    public Album(int id, String name, String coverImagePath, String descriptionFilePath, int status){
+    public Album(int id, String name, String coverImagePath, String description, int status){
         super(id);
         this.name = name;
         this.coverImagePath = coverImagePath;
-        this.descriptionFilePath = descriptionFilePath;
+        this.description = description;
         this.albumPerformers = null;
         this.albumTracks = null;
         this.status = status;
     }
 
-    public Album(int id, String name, String coverImagePath, String descriptionFilePath,
+    public Album(int id, String name, String coverImagePath, String description,
                  List<Performer> albumPerformers, List<Track> albumTracks, int status){
         super(id);
         this.name = name;
         this.coverImagePath = coverImagePath;
-        this.descriptionFilePath = descriptionFilePath;
+        this.description = description;
         this.albumPerformers = albumPerformers;
         this.albumTracks = albumTracks;
+        this.status = status;
+    }
+
+    public void setStatus(int status) {
         this.status = status;
     }
 
@@ -55,8 +57,8 @@ public class Album extends Entity implements Serializable {
         return coverImagePath;
     }
 
-    public String getDescriptionFilePath() {
-        return descriptionFilePath;
+    public String getDescription() {
+        return description;
     }
 
     public List<Performer> getAlbumPerformers() {

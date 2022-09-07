@@ -1,9 +1,7 @@
 package entity;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
 
 public class Performer extends Entity implements Serializable {
 
@@ -11,32 +9,37 @@ public class Performer extends Entity implements Serializable {
     private final String coverImagePath;
     private List<Album> performerAlbums;
     private List<Track> performerTracks;
-    private final String descriptionFilePath;
+    private final String description;
+
     private int status;
 
-    public Performer(String name, String descriptionFilePath, String coverImagePath){
+    public Performer(String name, String description, String coverImagePath){
         this.name = name;
-        this.descriptionFilePath = descriptionFilePath;
+        this.description = description;
         this.coverImagePath = coverImagePath;
     }
 
-    public Performer(int id, String name, String descriptionFilePath, String coverImagePath, int status){
+    public Performer(int id, String name, String description, String coverImagePath, int status){
         super(id);
         this.name = name;
-        this.descriptionFilePath = descriptionFilePath;
+        this.description = description;
         this.coverImagePath = coverImagePath;
         this.status = status;
 
     }
 
-    public Performer(int id, String name, String descriptionFilePath, String coverImagePath,
+    public Performer(int id, String name, String description, String coverImagePath,
                      List<Album> performerAlbums, List<Track> performerTracks, int status){
         super(id);
         this.name = name;
         this.coverImagePath = coverImagePath;
-        this.descriptionFilePath = descriptionFilePath;
+        this.description = description;
         this.performerAlbums = performerAlbums;
         this.performerTracks = performerTracks;
+        this.status = status;
+    }
+
+    public void setStatus(int status) {
         this.status = status;
     }
 
@@ -52,8 +55,8 @@ public class Performer extends Entity implements Serializable {
         return coverImagePath;
     }
 
-    public String getDescriptionFilePath() {
-        return descriptionFilePath;
+    public String getDescription() {
+        return description;
     }
 
     public List<Album> getPerformerAlbums() {

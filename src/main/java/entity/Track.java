@@ -1,40 +1,49 @@
 package entity;
 
+import dao.DAOConstants;
+
 import java.io.Serializable;
 import java.util.List;
-import java.util.Scanner;
 
 public class Track extends Entity implements Serializable {
 
     private String name;
     private List<Album> trackAlbums;
     private List<Performer> trackPerformers;
-    private final String lyricsFilePath;
+    private final String lyrics;
     private int status;
 
-    public Track(String name, String lyricsFilePath){
+    public Track(String name, String lyrics){
         this.name = name;
-        this.lyricsFilePath = lyricsFilePath;
+        this.lyrics = lyrics;
         trackAlbums = null;
         trackPerformers = null;
     }
 
-    public Track(int id, String name, String lyricsFilePath, int status){
+    public Track(int id, String name, String lyrics, int status){
         super(id);
         this.name = name;
-        this.lyricsFilePath = lyricsFilePath;
+        this.lyrics = lyrics;
         this.status = status;
         trackAlbums = null;
         trackPerformers = null;
     }
 
-    public Track(int id, String name, String lyricsFilePath, List<Album> trackAlbums, List<Performer> trackPerformers, int status){
+    public Track(String name, String lyrics, List<Album> trackAlbums, List<Performer> trackPerformers, int status){
+        this.name = name;
+        this.trackAlbums = trackAlbums;
+        this.trackPerformers = trackPerformers;
+        this.status = status;
+        this.lyrics = lyrics;
+    }
+
+    public Track(int id, String name, String lyrics, List<Album> trackAlbums, List<Performer> trackPerformers, int status){
         super(id);
         this.name = name;
         this.trackAlbums = trackAlbums;
         this.trackPerformers = trackPerformers;
         this.status = status;
-        this.lyricsFilePath = lyricsFilePath;
+        this.lyrics = lyrics;
     }
 
     public void setName(String name) {
@@ -61,8 +70,8 @@ public class Track extends Entity implements Serializable {
         return trackPerformers;
     }
 
-    public String getLyricsFilePath() {
-        return lyricsFilePath;
+    public String getLyrics() {
+        return lyrics;
     }
 
     public void setTrackAlbums(List<Album> trackAlbums) {

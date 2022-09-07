@@ -9,16 +9,21 @@ import java.util.List;
 
 public interface IAlbumDAO extends DAOFrame<Album>{
 
-    Album updateAlbumStatus(Integer albumId, int statusId) throws DAOException;
-    Album updateAlbumName(Integer albumId, String albumName) throws DAOException;
+    void updateAlbumStatus(Integer albumId, int statusId) throws DAOException;
+    void updateAlbum(Integer albumId, String albumName, String coverPath, String albumDescription) throws DAOException;
     List<Track> getAlbumTracksById(Integer id) throws DAOException;
     List<Performer> getAlbumPerformersById(Integer id) throws DAOException;
-    List<Album> searchAlbumsByName(String name, Integer statusId, Integer pageOffset) throws DAOException;
-    Integer countAlbums(Integer statusId) throws DAOException;
-    Album addAlbumPerformersByIds(Integer albumId, List<Integer> performersIds) throws DAOException;
-    void clearAlbumPerformers(Integer albumId) throws DAOException;
-    Album loadAlbumDependencies(Album album) throws DAOException;
-    List<Album> loadAlbumsDependencies(List<Album> albums) throws DAOException;
-    Album addAlbumPerformerById(Integer albumId, Integer performerId) throws DAOException;
+    List<Album> searchAlbumsByName(String name, Integer statusId, Integer limit, Integer offset) throws DAOException;
+    Integer countAlbums(String name, int statusId) throws DAOException;
+    void addAlbumPerformersByIds(Integer albumId, List<Integer> performersIds) throws DAOException;
+    void updateAlbumPerformersByIds(Integer albumId, List<Integer> performersIds) throws DAOException;
+    void loadAlbumPerformers(Album album) throws DAOException;
+    void loadAlbumTracks(Album album) throws DAOException;
+    void areAlbumsExist(List<Integer> albumsIds) throws DAOException;
+    List<Album> loadAlbumsPerformers(List<Album> albums) throws DAOException;
+    List<Album> loadAlbumsTracks(List<Album> albums) throws DAOException;
+    Integer getCreatorId(Integer albumId) throws DAOException;
+    List<Album> getCreatorAlbums(Integer userId) throws DAOException;
+    void addCreatorId(Integer albumId, Integer userId) throws DAOException;
 
 }

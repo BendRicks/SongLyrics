@@ -2,6 +2,9 @@ package dao.connection;
 
 import dao.connection.abstraction.IConnectionPool;
 import dao.exception.DAOException;
+import dao.impl.AlbumDAO;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -12,6 +15,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 
 public class ConnectionManager implements IConnectionPool {
 
+    private static final Logger logger = LogManager.getLogger(ConnectionManager.class);
     private static volatile ConnectionManager instance;
     private static Properties properties;
 
@@ -30,6 +34,7 @@ public class ConnectionManager implements IConnectionPool {
         properties = new Properties();
         properties.load(getClass().getResourceAsStream("/dbconfig.properties"));
         init();
+        logger.info("ConnectionManager class object initialized.");
     }
 
     private void init() throws DAOException {
@@ -41,7 +46,8 @@ public class ConnectionManager implements IConnectionPool {
                 Connection connection = DriverManager.getConnection(dbURL, username, password);
                 pool.add(connection);
             } catch (SQLException e) {
-                throw new DAOException("Can't intialize connection", 0);
+                logger.error("Error initializing ConnectionManager class object.");
+                throw new DAOException("Can't initialize connection", 0);
             }
         }
     }
@@ -53,8 +59,7 @@ public class ConnectionManager implements IConnectionPool {
                     try {
                         instance = new ConnectionManager();
                     } catch (IOException | DAOException e) {
-                        e.printStackTrace();
-                        //TODO запилить логгирование
+                        logger.error("Error creating ConnectionManager class object");
                     }
                 }
             }
@@ -69,6 +74,7 @@ public class ConnectionManager implements IConnectionPool {
             connection = pool.take();
             taken.add(connection);
         } catch (InterruptedException e) {
+            logger.error("Error trying to get free connection");
             throw new DAOException(e, 1);
         }
         return connection;

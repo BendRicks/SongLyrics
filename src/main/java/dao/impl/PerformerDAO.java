@@ -1,5 +1,6 @@
 package dao.impl;
 
+import dao.DAOConstants;
 import dao.DAOFactory;
 import dao.connection.ConnectionManager;
 import dao.exception.DAOException;
@@ -8,7 +9,10 @@ import dao.impl.abstraction.IPerformerDAO;
 import entity.Album;
 import entity.Performer;
 import entity.Track;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
+import javax.swing.event.ListDataEvent;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -18,19 +22,23 @@ import java.util.List;
 
 public class PerformerDAO extends AbstractDAO implements IPerformerDAO {
 
-    private static final String SAVE_PERFORMER_QUERY = "INSERT INTO `performer` (`performer_name`, `descr_file_path`, `cover_file_path`, `status_id`) VALUES (?, ?, ?, ?)";
+    private final Logger logger = LogManager.getLogger(Performer.class);
+    private static final String SAVE_PERFORMER_QUERY = "INSERT INTO `performer` (`performer_name`, `description`, `cover_url`, `status_id`) VALUES (?, ?, ?, ?);";
     private static final String UPDATE_PERFORMER_STATUS_QUERY = "UPDATE `performer` SET `status_id` = ? WHERE `performer_id` = ?";
-    private static final String UPDATE_PERFORMER_NAME_QUERY = "UPDATE `performer` SET `performer_name` = ? WHERE `performer_id` = ?";
+    private static final String UPDATE_PERFORMER_QUERY = "UPDATE `performer` SET `performer_name` = ?, `cover_url` = ?, `description` = ? WHERE `performer_id` = ?";
     private static final String DELETE_PERFORMER_QUERY = "DELETE FROM `performer` WHERE `performer_id` = ?;";
     private static final String FIND_PERFORMER_BY_NAME_QUERY = "SELECT * FROM `performer` WHERE `performer_name` = ?;";
     private static final String FIND_PERFORMER_BY_ID_QUERY = "SELECT * FROM `performer` WHERE `performer_id` = ?;";
     private static final String FIND_TRACKS_IDS_QUERY = "SELECT * FROM `track_performer` WHERE `performer_id` = ?;";
     private static final String FIND_ALBUMS_IDS_QUERY = "SELECT * FROM `album_performer` WHERE `performer_id` = ?;";
-    private static final String COUNT_PERFORMERS_QUERY = "SELECT COUNT(*) FROM `performer`";
-    private static final String COUNT_STATUS_SPECIFICATION = " WHERE `status_id` = ?";
+    private static final String COUNT_PERFORMERS_QUERY = "SELECT COUNT(*) FROM `performer` WHERE `performer_name` LIKE ?";
+    private static final String STATUS_SPECIFICATION = " AND `status_id` = ?";
     private static final String SEARCH_PERFORMER_BY_NAME_QUERY = "SELECT * FROM `performer` WHERE `performer_name` LIKE ?";
-    private static final String SEARCH_STATUS_SPECIFICATION = " AND `status_id` = ?";
-    private static final String SEARCH_PAGE_SPECIFICATION = " LIMIT 20 OFFSET ?";
+    private static final String SEARCH_PAGE_SPECIFICATION = " LIMIT ? OFFSET ?";
+    private static final String ADD_PERFORMER_CREATOR = "INSERT INTO `performers_by_user` (`performer_id`, `user_id`) VALUES (?, ?);";
+    private static final String GET_PERFORMER_CREATOR = "SELECT * FROM `performers_by_user` WHERE `performer_id` = ?;";
+    private static final String GET_CREATOR_PERFORMERS = "SELECT * FROM `performers_by_user` WHERE `user_id` = ?;";
+    private static final String COMPLEX_QUERY_END = ";";
 
     public PerformerDAO(ConnectionManager manager){
         super(manager);
@@ -44,15 +52,17 @@ public class PerformerDAO extends AbstractDAO implements IPerformerDAO {
             connection = getConnection(true);
             savePreparedStatement = connection.prepareStatement(SAVE_PERFORMER_QUERY);
             savePreparedStatement.setString(1, performer.getName());
-            savePreparedStatement.setString(2, performer.getDescriptionFilePath());
+            savePreparedStatement.setString(2, performer.getDescription());
             savePreparedStatement.setString(3, performer.getCoverImagePath());
             savePreparedStatement.setInt(4, DAOConstants.NON_VERIFIED_ID);
             int result = savePreparedStatement.executeUpdate();
             if (result == 0){
-                throw new DAOException("Troubles inserting performer into db", 211);
+                logger.error("Error while trying to create performer in db ");
+                throw new DAOException("Troubles inserting performer into db", 201);
             }
         } catch (SQLException e){
-            throw new DAOException(e, 210);
+            logger.error("SQL error while trying to create performer in db " + e.getSQLState());
+            throw new DAOException(e, 200);
         } finally {
             close(savePreparedStatement);
             retrieve(connection);
@@ -75,10 +85,11 @@ public class PerformerDAO extends AbstractDAO implements IPerformerDAO {
                         performerFromDB.getString(3), performerFromDB.getString(4),
                         performerFromDB.getInt(5));
             } else {
-                throw new DAOException("No such performer", 222);
+                throw new DAOException("No such performer", 202);
             }
         } catch (SQLException e){
-            throw new DAOException(e, 220);
+            logger.error("SQL error while trying to find performer in db " + e.getSQLState());
+            throw new DAOException(e, 200);
         } finally {
             close(findPreparedStatement);
             close(performerFromDB);
@@ -92,7 +103,7 @@ public class PerformerDAO extends AbstractDAO implements IPerformerDAO {
         Connection connection = null;
         PreparedStatement findPreparedStatement = null;
         ResultSet trackFromDB = null;
-        Performer performer = null;
+        Performer performer;
         try {
             connection = getConnection(true);
             findPreparedStatement = connection.prepareStatement(FIND_PERFORMER_BY_ID_QUERY);
@@ -103,10 +114,11 @@ public class PerformerDAO extends AbstractDAO implements IPerformerDAO {
                         trackFromDB.getString(3), trackFromDB.getString(4),
                         trackFromDB.getInt(5));
             } else {
-                throw new DAOException("No such performer", 221);
+                throw new DAOException("No such performer", 202);
             }
         } catch (SQLException e){
-            throw new DAOException(e, 220);
+            logger.error("SQL error while trying to create performer by id in db " + e.getSQLState());
+            throw new DAOException(e, 200);
         } finally {
             close(findPreparedStatement);
             close(trackFromDB);
@@ -116,44 +128,20 @@ public class PerformerDAO extends AbstractDAO implements IPerformerDAO {
     }
 
     @Override
-    public Performer loadPerformerDependencies(Performer performer) throws DAOException {
+    public void loadPerformerAlbums(Performer performer) throws DAOException {
         performer.setPerformerAlbums(getPerformerAlbumsById(performer.getId()));
+    }
+
+    @Override
+    public void loadPerformerTracks(Performer performer) throws DAOException {
         performer.setPerformerTracks(getPerformerTracksById(performer.getId()));
-        return performer;
     }
 
     @Override
-    public List<Performer> loadPerformersDependencies(List<Performer> performers) throws DAOException {
-        for (Performer performer : performers){
-            loadPerformerDependencies(performer);
+    public void arePerformersExist(List<Integer> performersIds) throws DAOException {
+        for (Integer performerId : performersIds){
+            findById(performerId);
         }
-        return performers;
-    }
-
-    @Override
-    public Performer updateParameter(Integer performerId, String query, Object newValue) throws DAOException {
-        Connection connection = null;
-        PreparedStatement updatePreparedStatement = null;
-        try {
-            connection = getConnection(true);
-            updatePreparedStatement = connection.prepareStatement(query);
-            if (newValue.getClass() == Integer.class){
-                updatePreparedStatement.setInt(1, (Integer)newValue);
-            } else if (newValue.getClass() == String.class) {
-                updatePreparedStatement.setString(1, (String)newValue);
-            }
-            updatePreparedStatement.setInt(2, performerId);
-            int result = updatePreparedStatement.executeUpdate();
-            if (result == 0) {
-                throw new DAOException("Troubles updating parameter", 241);
-            }
-        } catch (SQLException e){
-            throw new DAOException(e, 240);
-        } finally {
-            close(updatePreparedStatement);
-            retrieve(connection);
-        }
-        return findById(performerId);
     }
 
     @Override
@@ -166,10 +154,12 @@ public class PerformerDAO extends AbstractDAO implements IPerformerDAO {
             deletePreparedStatement.setInt(1, performer.getId());
             int result = deletePreparedStatement.executeUpdate();
             if (result == 0){
-                throw new DAOException("Troubles with deleting performer from db", 231);
+                logger.error("Error while trying to delete performer from db");
+                throw new DAOException("Troubles with deleting performer from db", 205);
             }
         } catch (SQLException e){
-            throw new DAOException(e, 230);
+            logger.error("SQL error while trying to delete performer from db " + e.getSQLState());
+            throw new DAOException(e, 200);
         } finally {
             close(deletePreparedStatement);
             retrieve(connection);
@@ -177,13 +167,51 @@ public class PerformerDAO extends AbstractDAO implements IPerformerDAO {
     }
 
     @Override
-    public Performer updatePerformerStatus(Integer performerId, int statusId) throws DAOException {
-        return updateParameter(performerId, UPDATE_PERFORMER_STATUS_QUERY, statusId);
+    public void updatePerformer(Integer performerId, String performerName, String coverPath, String performerDescription) throws DAOException {
+        Connection connection = null;
+        PreparedStatement updatePreparedStatement = null;
+        try {
+            connection = getConnection(true);
+            updatePreparedStatement = connection.prepareStatement(UPDATE_PERFORMER_QUERY);
+            updatePreparedStatement.setString(1, performerName);
+            updatePreparedStatement.setString(2, coverPath);
+            updatePreparedStatement.setString(3, performerDescription);
+            updatePreparedStatement.setInt(4, performerId);
+            int result = updatePreparedStatement.executeUpdate();
+            if (result == 0) {
+                logger.error("Error while trying to update performer in db");
+                throw new DAOException("Troubles updating performer", 203);
+            }
+        } catch (SQLException e) {
+            logger.error("SQL error while trying to update performer in db " + e.getSQLState());
+            throw new DAOException(e, 200);
+        } finally {
+            close(updatePreparedStatement);
+            retrieve(connection);
+        }
     }
 
     @Override
-    public Performer updatePerformerName(Integer performerId, String performerName) throws DAOException {
-        return updateParameter(performerId, UPDATE_PERFORMER_NAME_QUERY, performerName);
+    public void updatePerformerStatus(Integer performerId, int statusId) throws DAOException {
+        Connection connection = null;
+        PreparedStatement updatePreparedStatement = null;
+        try {
+            connection = getConnection(true);
+            updatePreparedStatement = connection.prepareStatement(UPDATE_PERFORMER_STATUS_QUERY);
+            updatePreparedStatement.setInt(1, statusId);
+            updatePreparedStatement.setInt(2, performerId);
+            int result = updatePreparedStatement.executeUpdate();
+            if (result == 0) {
+                logger.error("Error while trying to update performer status in db");
+                throw new DAOException("Troubles updating performer status", 204);
+            }
+        } catch (SQLException e) {
+            logger.error("SQL error while trying to update performer status in db " + e.getSQLState());
+            throw new DAOException(e, 200);
+        } finally {
+            close(updatePreparedStatement);
+            retrieve(connection);
+        }
     }
 
     @Override
@@ -199,11 +227,13 @@ public class PerformerDAO extends AbstractDAO implements IPerformerDAO {
             performersIDsPreparedStatement.setInt(1, id);
             performersIDs = performersIDsPreparedStatement.executeQuery();
             while (performersIDs.next()){
-                int performerID = performersIDs.getInt(2);
+                int performerID = performersIDs.getInt(1);
                 tracks.add(trackDAO.findById(performerID));
             }
+            trackDAO.loadTracksAlbums(tracks);
         } catch (SQLException e) {
-            throw new DAOException(e, 250);
+            logger.error("SQL error while trying to get performer tracks from db " + e.getSQLState());
+            throw new DAOException(e, 200);
         } finally {
             close(performersIDsPreparedStatement);
             close(performersIDs);
@@ -225,11 +255,12 @@ public class PerformerDAO extends AbstractDAO implements IPerformerDAO {
             albumsIDsPreparedStatement.setInt(1, id);
             albumsIDs = albumsIDsPreparedStatement.executeQuery();
             while (albumsIDs.next()){
-                int albumID = albumsIDs.getInt(2);
+                int albumID = albumsIDs.getInt(1);
                 albums.add(albumDAO.findById(albumID));
             }
         } catch (SQLException e) {
-            throw new DAOException(e, 260);
+            logger.error("SQL error while trying to get performer albums in db " + e.getSQLState());
+            throw new DAOException(e, 200);
         } finally {
             close(albumsIDsPreparedStatement);
             close(albumsIDs);
@@ -239,7 +270,7 @@ public class PerformerDAO extends AbstractDAO implements IPerformerDAO {
     }
 
     @Override
-    public List<Performer> searchPerformersByName(String name, Integer statusId, Integer pageOffset) throws DAOException {
+    public List<Performer> searchPerformersByName(String name, Integer statusId, Integer limit, Integer offset) throws DAOException {
         Connection connection = null;
         PreparedStatement findPreparedStatement = null;
         ResultSet tracksFromDB = null;
@@ -247,12 +278,14 @@ public class PerformerDAO extends AbstractDAO implements IPerformerDAO {
         try {
             connection = getConnection(true);
             if (statusId == DAOConstants.ALL_ID) {
-                findPreparedStatement = connection.prepareStatement(SEARCH_PERFORMER_BY_NAME_QUERY + SEARCH_PAGE_SPECIFICATION);
-                findPreparedStatement.setInt(2, pageOffset);
+                findPreparedStatement = connection.prepareStatement(SEARCH_PERFORMER_BY_NAME_QUERY + SEARCH_PAGE_SPECIFICATION + COMPLEX_QUERY_END);
+                findPreparedStatement.setInt(2, limit);
+                findPreparedStatement.setInt(3, offset);
             } else {
-                findPreparedStatement = connection.prepareStatement(SEARCH_PERFORMER_BY_NAME_QUERY + SEARCH_STATUS_SPECIFICATION + SEARCH_PAGE_SPECIFICATION);
+                findPreparedStatement = connection.prepareStatement(SEARCH_PERFORMER_BY_NAME_QUERY + STATUS_SPECIFICATION + SEARCH_PAGE_SPECIFICATION + COMPLEX_QUERY_END);
                 findPreparedStatement.setInt(2, statusId);
-                findPreparedStatement.setInt(3, pageOffset);
+                findPreparedStatement.setInt(3, limit);
+                findPreparedStatement.setInt(4, offset);
             }
             findPreparedStatement.setString(1, name);
             tracksFromDB = findPreparedStatement.executeQuery();
@@ -262,7 +295,8 @@ public class PerformerDAO extends AbstractDAO implements IPerformerDAO {
                         tracksFromDB.getInt(5)));
             }
         } catch (SQLException e){
-            throw new DAOException(e, 280);
+            logger.error("SQL error while trying to search performer in db " + e.getSQLState());
+            throw new DAOException(e, 200);
         } finally {
             close(findPreparedStatement);
             close(tracksFromDB);
@@ -272,7 +306,7 @@ public class PerformerDAO extends AbstractDAO implements IPerformerDAO {
     }
 
     @Override
-    public Integer countPerformers(Integer statusId) throws DAOException {
+    public Integer countPerformers(String name, int statusId) throws DAOException {
         Connection connection = null;
         PreparedStatement findPreparedStatement = null;
         ResultSet countRS = null;
@@ -280,22 +314,97 @@ public class PerformerDAO extends AbstractDAO implements IPerformerDAO {
         try {
             connection = getConnection(true);
             if (statusId == DAOConstants.ALL_ID) {
-                findPreparedStatement = connection.prepareStatement(COUNT_PERFORMERS_QUERY);
+                findPreparedStatement = connection.prepareStatement(COUNT_PERFORMERS_QUERY + COMPLEX_QUERY_END);
             } else {
-                findPreparedStatement = connection.prepareStatement(COUNT_PERFORMERS_QUERY + COUNT_STATUS_SPECIFICATION);
-                findPreparedStatement.setInt(1, statusId);
+                findPreparedStatement = connection.prepareStatement(COUNT_PERFORMERS_QUERY + STATUS_SPECIFICATION + COMPLEX_QUERY_END);
+                findPreparedStatement.setInt(2, statusId);
             }
+            findPreparedStatement.setString(1, name);
             countRS = findPreparedStatement.executeQuery();
             if (countRS.next()){
                 count = countRS.getInt(1);
             }
         } catch (SQLException e){
-            throw new DAOException(e, 290);
+            logger.error("SQL error while trying to count performers in db " + e.getSQLState());
+            throw new DAOException(e, 200);
         } finally {
             close(findPreparedStatement);
+            close(countRS);
             retrieve(connection);
         }
         return count;
     }
 
+    @Override
+    public Integer getCreatorId(Integer performerId) throws DAOException {
+        Connection connection = null;
+        PreparedStatement findPreparedStatement = null;
+        ResultSet resultSet = null;
+        Integer id = null;
+        try {
+            connection = getConnection(true);
+            findPreparedStatement = connection.prepareStatement(GET_PERFORMER_CREATOR);
+            findPreparedStatement.setInt(1, performerId);
+            resultSet = findPreparedStatement.executeQuery();
+            if (resultSet.next()){
+                id = resultSet.getInt(2);
+            }
+        } catch (SQLException e) {
+            logger.error("SQL error while trying to get performer creator from db " + e.getSQLState());
+            throw new DAOException(e, 200);
+        } finally {
+            close(findPreparedStatement);
+            close(resultSet);
+            retrieve(connection);
+        }
+        return id;
+    }
+
+    @Override
+    public List<Performer> getCreatorPerformers(Integer userId) throws DAOException {
+        Connection connection = null;
+        PreparedStatement findPreparedStatement = null;
+        ResultSet resultSet = null;
+        List<Performer> performers = new ArrayList<>();
+        try {
+            connection = getConnection(true);
+            findPreparedStatement = connection.prepareStatement(GET_CREATOR_PERFORMERS);
+            findPreparedStatement.setInt(1, userId);
+            resultSet = findPreparedStatement.executeQuery();
+            while (resultSet.next()){
+                performers.add(findById(resultSet.getInt(1)));
+            }
+        } catch (SQLException e) {
+            logger.error("SQL error while trying to get creator performers from db " + e.getSQLState());
+            throw new DAOException(e, 200);
+        } finally {
+            close(findPreparedStatement);
+            close(resultSet);
+            retrieve(connection);
+        }
+        return performers;
+    }
+
+    @Override
+    public void addCreatorId(Integer performerId, Integer userId) throws DAOException {
+        Connection connection = null;
+        PreparedStatement addPreparedStatement = null;
+        try {
+            connection = getConnection(true);
+            addPreparedStatement = connection.prepareStatement(ADD_PERFORMER_CREATOR);
+            addPreparedStatement.setInt(1, performerId);
+            addPreparedStatement.setInt(2, userId);
+            int result = addPreparedStatement.executeUpdate();
+            if (result == 0){
+                logger.error("Error while trying to add performer creator in db");
+                throw new DAOException("Troubles with adding performer-creator to db", 206);
+            }
+        } catch (SQLException e){
+            logger.error("SQL error while trying to add performer creator in db " + e.getSQLState());
+            throw new DAOException(e, 200);
+        } finally {
+            close(addPreparedStatement);
+            retrieve(connection);
+        }
+    }
 }

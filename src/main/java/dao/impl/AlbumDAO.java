@@ -1,5 +1,6 @@
 package dao.impl;
 
+import dao.DAOConstants;
 import dao.DAOFactory;
 import dao.connection.ConnectionManager;
 import dao.exception.DAOException;
@@ -8,6 +9,8 @@ import dao.impl.abstraction.IAlbumDAO;
 import entity.Album;
 import entity.Performer;
 import entity.Track;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -18,23 +21,27 @@ import java.util.List;
 
 public class AlbumDAO extends AbstractDAO implements IAlbumDAO {
 
-    private static final String SAVE_ALBUM_QUERY = "INSERT INTO `album` (`album_name`, `descr_file_path`, `cover_file_path`, `status_id`) VALUES (?, ?, ?, ?)";
+    private final Logger logger = LogManager.getLogger(AlbumDAO.class);
+    private static final String SAVE_ALBUM_QUERY = "INSERT INTO `album` (`album_name`, `description`, `cover_url`, `status_id`) VALUES (?, ?, ?, ?);";
     private static final String UPDATE_ALBUM_STATUS_QUERY = "UPDATE `album` SET `status_id` = ? WHERE `album_id` = ?";
-    private static final String UPDATE_ALBUM_NAME_QUERY = "UPDATE `album` SET `album_name` = ? WHERE `album_id` = ?";
+    private static final String UPDATE_ALBUM_QUERY = "UPDATE `album` SET `album_name` = ?, `cover_url` = ?, `description` = ? WHERE `album_id` = ?";
     private static final String DELETE_ALBUM_QUERY = "DELETE FROM `album` WHERE `album_id` = ?;";
     private static final String FIND_ALBUM_BY_NAME_QUERY = "SELECT * FROM `album` WHERE `album_name` = ?;";
     private static final String FIND_ALBUM_BY_ID_QUERY = "SELECT * FROM `album` WHERE `album_id` = ?;";
     private static final String FIND_TRACKS_IDS_QUERY = "SELECT `track_id` FROM `track_album` WHERE `album_id` = ?;";
     private static final String FIND_PERFORMERS_IDS_QUERY = "SELECT `performer_id` FROM `album_performer` WHERE `album_id` = ?;";
-    private static final String COUNT_ALBUMS_QUERY = "SELECT COUNT(*) FROM `album`";
-    private static final String COUNT_STATUS_SPECIFICATION = " WHERE `status_id` = ?";
+    private static final String COUNT_ALBUMS_QUERY = "SELECT COUNT(*) FROM `album` WHERE `album_name` LIKE ?";
     private static final String SEARCH_ALBUM_BY_NAME_QUERY = "SELECT * FROM `album` WHERE `album_name` LIKE ?";
-    private static final String SEARCH_STATUS_SPECIFICATION = " AND `status_id` = ?";
-    private static final String SEARCH_PAGE_SPECIFICATION = " LIMIT 20 OFFSET ?";
-    private static final String ADD_PERFORMER_QUERY = "INSERT INTO `album_performer` (`album_id`, `performer_id`) VALUES (?, ?)";
-    private static final String DELETE_PERFORMERS_QUERY = "DELETE FROM `album_performer` WHERE `album_id` = ?";
+    private static final String STATUS_SPECIFICATION = " AND `status_id` = ?";
+    private static final String SEARCH_PAGE_SPECIFICATION = " LIMIT ? OFFSET ?";
+    private static final String ADD_PERFORMER_QUERY = "INSERT INTO `album_performer` (`album_id`, `performer_id`) VALUES (?, ?);";
+    private static final String DELETE_PERFORMERS_QUERY = "DELETE FROM `album_performer` WHERE `album_id` = ?;";
+    private static final String ADD_ALBUM_CREATOR = "INSERT INTO `albums_by_user` (`album_id`, `user_id`) VALUES (?, ?);";
+    private static final String GET_ALBUM_CREATOR = "SELECT * FROM `albums_by_user` WHERE `album_id` = ?;";
+    private static final String GET_CREATOR_ALBUMS = "SELECT * FROM `albums_by_user` WHERE `user_id` = ?;";
+    private static final String COMPLEX_QUERY_END = ";";
 
-    public AlbumDAO(ConnectionManager manager){
+    public AlbumDAO(ConnectionManager manager) {
         super(manager);
     }
 
@@ -46,15 +53,17 @@ public class AlbumDAO extends AbstractDAO implements IAlbumDAO {
             connection = getConnection(true);
             savePreparedStatement = connection.prepareStatement(SAVE_ALBUM_QUERY);
             savePreparedStatement.setString(1, album.getName());
-            savePreparedStatement.setString(2, album.getDescriptionFilePath());
+            savePreparedStatement.setString(2, album.getDescription());
             savePreparedStatement.setString(3, album.getCoverImagePath());
             savePreparedStatement.setInt(4, DAOConstants.NON_VERIFIED_ID);
             int result = savePreparedStatement.executeUpdate();
-            if (result == 0){
-                throw new DAOException("Troubles inserting album into db", 311);
+            if (result == 0) {
+                logger.error("Error creating album in db");
+                throw new DAOException("Troubles inserting album into db", 101);
             }
-        } catch (SQLException e){
-            throw new DAOException(e, 310);
+        } catch (SQLException e) {
+            logger.error("SQL error while trying to create album in db " + e.getSQLState());
+            throw new DAOException(e, 100);
         } finally {
             close(savePreparedStatement);
             retrieve(connection);
@@ -72,15 +81,16 @@ public class AlbumDAO extends AbstractDAO implements IAlbumDAO {
             findPreparedStatement = connection.prepareStatement(FIND_ALBUM_BY_NAME_QUERY);
             findPreparedStatement.setString(1, album.getName());
             performerFromDB = findPreparedStatement.executeQuery();
-            if (performerFromDB.next()){
+            if (performerFromDB.next()) {
                 album = new Album(performerFromDB.getInt(1), performerFromDB.getString(2),
                         performerFromDB.getString(3), performerFromDB.getString(4),
                         performerFromDB.getInt(5));
             } else {
-                throw new DAOException("No such album", 322);
+                throw new DAOException("No such album", 102);
             }
-        } catch (SQLException e){
-            throw new DAOException(e, 320);
+        } catch (SQLException e) {
+            logger.error("SQL error while trying to find album in db " + e.getSQLState());
+            throw new DAOException(e, 100);
         } finally {
             close(findPreparedStatement);
             close(performerFromDB);
@@ -94,21 +104,22 @@ public class AlbumDAO extends AbstractDAO implements IAlbumDAO {
         Connection connection = null;
         PreparedStatement findPreparedStatement = null;
         ResultSet trackFromDB = null;
-        Album album = null;
+        Album album;
         try {
             connection = getConnection(true);
             findPreparedStatement = connection.prepareStatement(FIND_ALBUM_BY_ID_QUERY);
             findPreparedStatement.setInt(1, id);
             trackFromDB = findPreparedStatement.executeQuery();
-            if (trackFromDB.next()){
+            if (trackFromDB.next()) {
                 album = new Album(id, trackFromDB.getString(2),
                         trackFromDB.getString(3), trackFromDB.getString(4),
                         trackFromDB.getInt(5));
             } else {
-                throw new DAOException("No such album", 321);
+                throw new DAOException("No such album", 102);
             }
-        } catch (SQLException e){
-            throw new DAOException(e, 320);
+        } catch (SQLException e) {
+            logger.error("SQL error while trying to find album in db by id " + e.getSQLState());
+            throw new DAOException(e, 100);
         } finally {
             close(findPreparedStatement);
             close(trackFromDB);
@@ -118,39 +129,81 @@ public class AlbumDAO extends AbstractDAO implements IAlbumDAO {
     }
 
     @Override
-    public Album updateParameter(Integer albumId, String query, Object newValue) throws DAOException {
+    public void updateAlbum(Integer albumId, String albumName, String coverPath, String albumDescription) throws DAOException {
         Connection connection = null;
         PreparedStatement updatePreparedStatement = null;
         try {
             connection = getConnection(true);
-            updatePreparedStatement = connection.prepareStatement(query);
-            if (newValue.getClass() == Integer.class){
-                updatePreparedStatement.setInt(1, (Integer)newValue);
-            } else if (newValue.getClass() == String.class) {
-                updatePreparedStatement.setString(1, (String)newValue);
-            }
-            updatePreparedStatement.setInt(2, albumId);
+            updatePreparedStatement = connection.prepareStatement(UPDATE_ALBUM_QUERY);
+            updatePreparedStatement.setString(1, albumName);
+            updatePreparedStatement.setString(2, coverPath);
+            updatePreparedStatement.setString(3, albumDescription);
+            updatePreparedStatement.setInt(4, albumId);
             int result = updatePreparedStatement.executeUpdate();
             if (result == 0) {
-                throw new DAOException("Troubles updating parameter", 341);
+                logger.error("Error while trying to update album in db");
+                throw new DAOException("Troubles updating album", 103);
             }
-        } catch (SQLException e){
-            throw new DAOException(e, 340);
+        } catch (SQLException e) {
+            logger.error("SQL error while trying to update album in db " + e.getSQLState());
+            throw new DAOException(e, 100);
         } finally {
             close(updatePreparedStatement);
             retrieve(connection);
         }
-        return findById(albumId);
     }
 
     @Override
-    public Album updateAlbumStatus(Integer albumId, int statusId) throws DAOException {
-        return updateParameter(albumId, UPDATE_ALBUM_STATUS_QUERY, statusId);
+    public void updateAlbumStatus(Integer albumId, int statusId) throws DAOException {
+        Connection connection = null;
+        PreparedStatement updatePreparedStatement = null;
+        try {
+            connection = getConnection(true);
+            updatePreparedStatement = connection.prepareStatement(UPDATE_ALBUM_STATUS_QUERY);
+            updatePreparedStatement.setInt(1, statusId);
+            updatePreparedStatement.setInt(2, albumId);
+            int result = updatePreparedStatement.executeUpdate();
+            if (result == 0) {
+                logger.error("Error while trying to update album status in db ");
+                throw new DAOException("Troubles updating album status", 104);
+            }
+        } catch (SQLException e) {
+            logger.error("SQL error while trying to update album status in db " + e.getSQLState());
+            throw new DAOException(e, 100);
+        } finally {
+            close(updatePreparedStatement);
+            retrieve(connection);
+        }
     }
 
     @Override
-    public Album updateAlbumName(Integer albumId, String albumName) throws DAOException {
-        return updateParameter(albumId, UPDATE_ALBUM_NAME_QUERY, albumName);
+    public void updateAlbumPerformersByIds(Integer albumId, List<Integer> performersIds) throws DAOException {
+        Connection connection = null;
+        PreparedStatement deletePreparedStatement = null;
+        List<PreparedStatement> addPreparedStatements = new ArrayList<>();
+        try {
+            connection = getConnection(false);
+            deletePreparedStatement = connection.prepareStatement(DELETE_PERFORMERS_QUERY);
+            deletePreparedStatement.setInt(1, albumId);
+            deletePreparedStatement.executeUpdate();
+            for (Integer performerId : performersIds) {
+                PreparedStatement addPreparedStatement = connection.prepareStatement(ADD_PERFORMER_QUERY);
+                addPreparedStatements.add(addPreparedStatement);
+                addPreparedStatement.setInt(1, albumId);
+                addPreparedStatement.setInt(2, performerId);
+                addPreparedStatement.executeUpdate();
+            }
+            connection.commit();
+        } catch (SQLException e) {
+            logger.error("SQL error while trying to update album performers in db " + e.getSQLState());
+            throw new DAOException(e, 100);
+        } finally {
+            close(deletePreparedStatement);
+            for (PreparedStatement statement : addPreparedStatements) {
+                close(statement);
+            }
+            retrieve(connection);
+        }
     }
 
     @Override
@@ -162,11 +215,13 @@ public class AlbumDAO extends AbstractDAO implements IAlbumDAO {
             deletePreparedStatement = connection.prepareStatement(DELETE_ALBUM_QUERY);
             deletePreparedStatement.setInt(1, album.getId());
             int result = deletePreparedStatement.executeUpdate();
-            if (result == 0){
-                throw new DAOException("Troubles with deleting album from db", 331);
+            if (result == 0) {
+                logger.error("Error while trying to delete album from db");
+                throw new DAOException("Troubles with deleting album from db", 105);
             }
-        } catch (SQLException e){
-            throw new DAOException(e, 330);
+        } catch (SQLException e) {
+            logger.error("SQL error while trying to delete album from db " + e.getSQLState());
+            throw new DAOException(e, 100);
         } finally {
             close(deletePreparedStatement);
             retrieve(connection);
@@ -185,12 +240,13 @@ public class AlbumDAO extends AbstractDAO implements IAlbumDAO {
             performersIDsPreparedStatement = connection.prepareStatement(FIND_TRACKS_IDS_QUERY);
             performersIDsPreparedStatement.setInt(1, id);
             performersIDs = performersIDsPreparedStatement.executeQuery();
-            while (performersIDs.next()){
+            while (performersIDs.next()) {
                 int performerID = performersIDs.getInt(1);
                 tracks.add(trackDAO.findById(performerID));
             }
         } catch (SQLException e) {
-            throw new DAOException(e, 350);
+            logger.error("SQL error while trying to get album tracks from db " + e.getSQLState());
+            throw new DAOException(e, 100);
         } finally {
             close(performersIDsPreparedStatement);
             close(performersIDs);
@@ -211,12 +267,13 @@ public class AlbumDAO extends AbstractDAO implements IAlbumDAO {
             performersIDsPreparedStatement = connection.prepareStatement(FIND_PERFORMERS_IDS_QUERY);
             performersIDsPreparedStatement.setInt(1, id);
             performersIDs = performersIDsPreparedStatement.executeQuery();
-            while (performersIDs.next()){
+            while (performersIDs.next()) {
                 int performerID = performersIDs.getInt(1);
                 performers.add(performerDAO.findById(performerID));
             }
         } catch (SQLException e) {
-            throw new DAOException(e, 370);
+            logger.error("SQL error while trying to get album performers from db " + e.getSQLState());
+            throw new DAOException(e, 100);
         } finally {
             close(performersIDsPreparedStatement);
             close(performersIDs);
@@ -226,7 +283,14 @@ public class AlbumDAO extends AbstractDAO implements IAlbumDAO {
     }
 
     @Override
-    public Album addAlbumPerformersByIds(Integer albumId, List<Integer> performersIds) throws DAOException {
+    public void areAlbumsExist(List<Integer> albumsIds) throws DAOException {
+        for (Integer albumID : albumsIds) {
+            findById(albumID);
+        }
+    }
+
+    @Override
+    public void addAlbumPerformersByIds(Integer albumId, List<Integer> performersIds) throws DAOException {
         Connection connection = null;
         List<PreparedStatement> addPreparedStatements = new ArrayList<>();
         try {
@@ -239,39 +303,19 @@ public class AlbumDAO extends AbstractDAO implements IAlbumDAO {
                 addPreparedStatement.executeUpdate();
             }
             connection.commit();
-        } catch (SQLException e){
-            throw new DAOException(e, 470);
+        } catch (SQLException e) {
+            logger.error("SQL error while trying to get album tracks from db " + e.getSQLState());
+            throw new DAOException(e, 100);
         } finally {
             for (PreparedStatement statement : addPreparedStatements) {
                 close(statement);
             }
             retrieve(connection);
         }
-        return findById(albumId);
     }
 
     @Override
-    public void clearAlbumPerformers(Integer albumId) throws DAOException {
-        Connection connection = null;
-        PreparedStatement deletePreparedStatement = null;
-        try {
-            connection = getConnection(true);
-            deletePreparedStatement = connection.prepareStatement(DELETE_PERFORMERS_QUERY);
-            deletePreparedStatement.setInt(1, albumId);
-            int result = deletePreparedStatement.executeUpdate();
-            if (result == 0){
-                throw new DAOException("Troubles with deleting track from db", 471);
-            }
-        } catch (SQLException e){
-            throw new DAOException(e, 470);
-        } finally {
-            close(deletePreparedStatement);
-            retrieve(connection);
-        }
-    }
-
-    @Override
-    public List<Album> searchAlbumsByName(String name, Integer statusId, Integer pageOffset) throws DAOException {
+    public List<Album> searchAlbumsByName(String name, Integer statusId, Integer limit, Integer offset) throws DAOException {
         Connection connection = null;
         PreparedStatement findPreparedStatement = null;
         ResultSet albumsFromDB = null;
@@ -279,22 +323,25 @@ public class AlbumDAO extends AbstractDAO implements IAlbumDAO {
         try {
             connection = getConnection(true);
             if (statusId == DAOConstants.ALL_ID) {
-                findPreparedStatement = connection.prepareStatement(SEARCH_ALBUM_BY_NAME_QUERY + SEARCH_PAGE_SPECIFICATION);
-                findPreparedStatement.setInt(2, pageOffset);
+                findPreparedStatement = connection.prepareStatement(SEARCH_ALBUM_BY_NAME_QUERY + SEARCH_PAGE_SPECIFICATION + COMPLEX_QUERY_END);
+                findPreparedStatement.setInt(2, limit);
+                findPreparedStatement.setInt(3, offset);
             } else {
-                findPreparedStatement = connection.prepareStatement(SEARCH_ALBUM_BY_NAME_QUERY + SEARCH_STATUS_SPECIFICATION + SEARCH_STATUS_SPECIFICATION);
+                findPreparedStatement = connection.prepareStatement(SEARCH_ALBUM_BY_NAME_QUERY + STATUS_SPECIFICATION + SEARCH_PAGE_SPECIFICATION + COMPLEX_QUERY_END);
                 findPreparedStatement.setInt(2, statusId);
-                findPreparedStatement.setInt(3, pageOffset);
+                findPreparedStatement.setInt(3, limit);
+                findPreparedStatement.setInt(4, offset);
             }
             findPreparedStatement.setString(1, name);
             albumsFromDB = findPreparedStatement.executeQuery();
-            while (albumsFromDB.next()){
+            while (albumsFromDB.next()) {
                 albums.add(new Album(albumsFromDB.getInt(1), albumsFromDB.getString(2),
                         albumsFromDB.getString(3), albumsFromDB.getString(4),
                         albumsFromDB.getInt(5)));
             }
-        } catch (SQLException e){
-            throw new DAOException(e, 380);
+        } catch (SQLException e) {
+            logger.error("SQL error while trying to search albums in db " + e.getSQLState());
+            throw new DAOException(e, 100);
         } finally {
             close(findPreparedStatement);
             close(albumsFromDB);
@@ -304,7 +351,7 @@ public class AlbumDAO extends AbstractDAO implements IAlbumDAO {
     }
 
     @Override
-    public Integer countAlbums(Integer statusId) throws DAOException {
+    public Integer countAlbums(String name, int statusId) throws DAOException {
         Connection connection = null;
         PreparedStatement findPreparedStatement = null;
         ResultSet countRS = null;
@@ -312,18 +359,21 @@ public class AlbumDAO extends AbstractDAO implements IAlbumDAO {
         try {
             connection = getConnection(true);
             if (statusId == DAOConstants.ALL_ID) {
-                findPreparedStatement = connection.prepareStatement(COUNT_ALBUMS_QUERY);
+                findPreparedStatement = connection.prepareStatement(COUNT_ALBUMS_QUERY + COMPLEX_QUERY_END);
             } else {
-                findPreparedStatement = connection.prepareStatement(COUNT_ALBUMS_QUERY + COUNT_STATUS_SPECIFICATION);
-                findPreparedStatement.setInt(1, statusId);
+                findPreparedStatement = connection.prepareStatement(COUNT_ALBUMS_QUERY + STATUS_SPECIFICATION + COMPLEX_QUERY_END);
+                findPreparedStatement.setInt(2, statusId);
             }
+            findPreparedStatement.setString(1, name);
             countRS = findPreparedStatement.executeQuery();
-            if (countRS.next()){
+            if (countRS.next()) {
                 count = countRS.getInt(1);
             }
-        } catch (SQLException e){
-            throw new DAOException(e, 390);
+        } catch (SQLException e) {
+            logger.error("SQL error while trying to get count tracks in db " + e.getSQLState());
+            throw new DAOException(e, 100);
         } finally {
+            close(countRS);
             close(findPreparedStatement);
             retrieve(connection);
         }
@@ -331,39 +381,102 @@ public class AlbumDAO extends AbstractDAO implements IAlbumDAO {
     }
 
     @Override
-    public Album loadAlbumDependencies(Album album) throws DAOException {
-        album.setAlbumPerformers(getAlbumPerformersById(album.getId()));
+    public void loadAlbumTracks(Album album) throws DAOException {
         album.setAlbumTracks(getAlbumTracksById(album.getId()));
-        return album;
     }
 
     @Override
-    public List<Album> loadAlbumsDependencies(List<Album> albums) throws DAOException {
-        for (Album album : albums){
-            loadAlbumDependencies(album);
+    public void loadAlbumPerformers(Album album) throws DAOException {
+        album.setAlbumPerformers(getAlbumPerformersById(album.getId()));
+    }
+
+    @Override
+    public List<Album> loadAlbumsPerformers(List<Album> albums) throws DAOException {
+        for (Album album : albums) {
+            loadAlbumPerformers(album);
         }
         return albums;
     }
 
     @Override
-    public Album addAlbumPerformerById(Integer albumId, Integer performerId) throws DAOException {
+    public List<Album> loadAlbumsTracks(List<Album> albums) throws DAOException {
+        for (Album album : albums) {
+            loadAlbumTracks(album);
+        }
+        return albums;
+    }
+
+    @Override
+    public Integer getCreatorId(Integer albumId) throws DAOException {
+        Connection connection = null;
+        PreparedStatement findPreparedStatement = null;
+        ResultSet resultSet = null;
+        Integer id = null;
+        try {
+            connection = getConnection(true);
+            findPreparedStatement = connection.prepareStatement(GET_ALBUM_CREATOR);
+            findPreparedStatement.setInt(1, albumId);
+            resultSet = findPreparedStatement.executeQuery();
+            if (resultSet.next()) {
+                id = resultSet.getInt(2);
+            }
+        } catch (SQLException e) {
+            logger.error("SQL error while trying to get album creator id from db " + e.getSQLState());
+            throw new DAOException(e, 100);
+        }
+        finally {
+            retrieve(connection);
+            close(resultSet);
+            close(findPreparedStatement);
+        }
+        return id;
+    }
+
+    @Override
+    public List<Album> getCreatorAlbums(Integer userId) throws DAOException {
+        Connection connection = null;
+        PreparedStatement findPreparedStatement = null;
+        ResultSet resultSet = null;
+        List<Album> albums = new ArrayList<>();
+        try {
+            connection = getConnection(true);
+            findPreparedStatement = connection.prepareStatement(GET_CREATOR_ALBUMS);
+            findPreparedStatement.setInt(1, userId);
+            resultSet = findPreparedStatement.executeQuery();
+            while (resultSet.next()) {
+                albums.add(findById(resultSet.getInt(1)));
+            }
+        } catch (SQLException e) {
+            logger.error("SQL error while trying to get creator albums from db " + e.getSQLState());
+            throw new DAOException(e, 100);
+        } finally {
+            retrieve(connection);
+            close(resultSet);
+            close(findPreparedStatement);
+        }
+        return albums;
+    }
+
+    @Override
+    public void addCreatorId(Integer albumId, Integer userId) throws DAOException {
         Connection connection = null;
         PreparedStatement addPreparedStatement = null;
         try {
             connection = getConnection(true);
-            addPreparedStatement = connection.prepareStatement(ADD_PERFORMER_QUERY);
+            addPreparedStatement = connection.prepareStatement(ADD_ALBUM_CREATOR);
             addPreparedStatement.setInt(1, albumId);
-            addPreparedStatement.setInt(2, performerId);
+            addPreparedStatement.setInt(2, userId);
             int result = addPreparedStatement.executeUpdate();
-            if (result == 0){
-                throw new DAOException("Troubles with adding track to db", 371);
+            if (result == 0) {
+                logger.error("Error while trying to add album creator in db");
+                throw new DAOException("Troubles with adding album-creator to db", 106);
             }
-        } catch (SQLException e){
-            throw new DAOException(e, 370);
+        } catch (SQLException e) {
+            logger.error("SQL error while trying to add album creator in db " + e.getSQLState());
+            throw new DAOException(e, 100);
         } finally {
             close(addPreparedStatement);
             retrieve(connection);
         }
-        return findById(albumId);
     }
 }

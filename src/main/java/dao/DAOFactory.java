@@ -5,11 +5,13 @@ import dao.impl.AlbumDAO;
 import dao.impl.PerformerDAO;
 import dao.impl.TrackDAO;
 import dao.impl.UserDAO;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class DAOFactory {
 
+    private final Logger logger = LogManager.getLogger(DAOFactory.class);
     private static volatile DAOFactory instance;
-
     private final AlbumDAO albumDAO;
     private final PerformerDAO performerDAO;
     private final TrackDAO trackDAO;
@@ -21,6 +23,7 @@ public class DAOFactory {
         performerDAO = new PerformerDAO(manager);
         trackDAO = new TrackDAO(manager);
         userDAO = new UserDAO(manager);
+        logger.info("DAOFactory class object initialized");
     }
 
     public static DAOFactory getInstance() {
